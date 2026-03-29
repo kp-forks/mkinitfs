@@ -769,6 +769,7 @@ if [ -n "$KOPT_root" ]; then
 	# run nlplug-findfs before SINGLEMODE so we load keyboard drivers
 	ebegin "Mounting root"
 	$MOCK nlplug-findfs $cryptopts -p /sbin/mdev ${KOPT_debug_init:+-d} \
+		${KOPT_usbdelay:+-t $(( $KOPT_usbdelay * 1000 ))} \
 		${KOPT_uevent_buf_size:+-U $KOPT_uevent_buf_size} \
 		$KOPT_root
 
