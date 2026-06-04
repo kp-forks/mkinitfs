@@ -8,6 +8,7 @@ init="$datadir"/initramfs-init
 fstab="$datadir"/fstab
 passwd="$datadir"/passwd
 group="$datadir"/group
+mdev="$datadir"/mdev.conf
 
 startdir=$PWD
 
@@ -59,7 +60,7 @@ initfs_base() {
 		install -Dm644 "$modloop_sig" \
 			"$tmpdir/var/cache/misc/${modloop_sig##*/}"
 	fi
-	for i in "$fstab" "$passwd" "$group"; do
+	for i in "$fstab" "$passwd" "$group" "$mdev"; do
 		install -Dm644 "$i" "$tmpdir/etc/${i##*/}" || return 1
 	done
 	cd "$oldpwd" || return 1

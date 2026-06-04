@@ -7,7 +7,7 @@ datadir		?= $(datarootdir)/mkinitfs
 mandir		?= $(datarootdir)/man
 
 SBIN_FILES	:= mkinitfs bootchartd nlplug-findfs/nlplug-findfs
-SHARE_FILES	:= initramfs-init fstab passwd group
+SHARE_FILES	:= initramfs-init fstab passwd group mdev.conf
 CONF_FILES	:= mkinitfs.conf \
 		features.d/9p.modules \
 		features.d/ata.modules \
