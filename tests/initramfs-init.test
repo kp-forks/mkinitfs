@@ -1,6 +1,7 @@
 #!/usr/bin/env atf-sh
-
-. $(atf_get_srcdir)/test_env.sh
+# shellcheck shell=sh
+# shellcheck disable=SC1091
+. "$(atf_get_srcdir)"/test_env.sh
 
 init_tests \
 	initramfs_init_cmdline_root \
@@ -86,14 +87,15 @@ fake_serial_devices() {
 }
 
 fake_ifaces() {
+	# shellcheck disable=SC3043
 	local n=1
 	mkdir -p usr/share/udhcpc
 	touch usr/share/udhcpc/default.script
 	for i; do
-		mkdir -p sys/class/net/$i/device
-		printf "$n\n" > sys/class/net/$i/ifindex
-		printf "down\n" > sys/class/net/$i/operstate
-		printf "02:00:00:00:00:%.2x\n" $n > sys/class/net/$i/address
+		mkdir -p "sys/class/net/$i/device"
+		printf "%s\n" "$n" > "sys/class/net/$i/ifindex"
+		printf "down\n" > "sys/class/net/$i/operstate"
+		printf "02:00:00:00:00:%.2x\n" "$n" > "sys/class/net/$i/address"
 		n=$((n+1))
 	done
 }
