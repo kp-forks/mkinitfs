@@ -33,6 +33,8 @@ init_tests \
 	initramfs_init_tmpfs_root_alpine_repo \
 	initramfs_init_aoe \
 	initramfs_init_wireguard \
+	initramfs_init_wireguard_multiple_ips \
+	initramfs_init_resume_major_minor \
 	initramfs_init_resume_offset \
 	initramfs_init_mount_usr \
 	initramfs_init_autodetect_serial_setconsole \
@@ -566,6 +568,34 @@ initramfs_init_wireguard_body() {
 		-o match:'ip link set dev wg0 up' \
 		-o match:'modprobe.*wireguard' \
 		initramfs-init
+}
+
+initramfs_init_wireguard_multiple_ips_body() {
+	fake_cmdline "wireguard=wg0;192.168.0.1/24,fd00::1/64"
+	fake_sysroot_init
+	fake_switch_root
+
+	atf_check \
+		-o match:'ip addr add dev wg0 192.168.0.1/24' \
+		-o match:'ip addr add dev wg0 fd00::1/64' \
+		initramfs-init
+}
+
+initramfs_init_resume_major_minor_body() {
+	fake_cmdline "root=fake_dev resume=fake_dev"
+	fake_sysroot_init
+	fake_switch_root
+
+	mkdir -p sys/power
+	touch sys/power/resume
+	touch fake_dev
+
+	atf_check \
+		-o ignore \
+		initramfs-init
+	atf_check \
+		-o match:'0:0' \
+		cat sys/power/resume
 }
 
 initramfs_init_resume_offset_body() {
