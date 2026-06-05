@@ -39,10 +39,18 @@ mkinitfs_list_features_body() {
 
 mkinitfs_list_files_body() {
 	mkdir -p etc/mkinitfs/features.d
-	touch testfile
-	echo "/testfile" > etc/mkinitfs/features.d/myfiles.files
+	mkdir -p etc/modprobe.d
+	touch testfile \
+		etc/modprobe.d/foo.conf \
+		etc/modprobe.d/bar.txt
+	cat > etc/mkinitfs/features.d/myfiles.files <<-EOF
+		/testfile
+		/etc/modprobe.d/*.conf
+	EOF
 	DATADIR="$srcdir" atf_check \
 		-o match:"testfile" \
+		-o match:"etc/modprobe.d/foo.conf" \
+		-o not-match:"etc/modprobe.d/bar.txt" \
 		mkinitfs -b "$PWD" -P "$PWD/etc/mkinitfs/features.d" -n -F myfiles -l
 }
 
