@@ -6,6 +6,7 @@ init_tests \
 	initramfs_init_cmdline_root \
 	initramfs_init_blacklist \
 	initramfs_init_tmpfs_root \
+	initramfs_init_tmpfs_root_usbdelay \
 	initramfs_init_tmpfs_root_modloop_sign \
 	initramfs_init_tmpfs_root_net_apkovl \
 	initramfs_init_tmpfs_root_console_serial \
@@ -125,6 +126,16 @@ initramfs_init_tmpfs_root_body() {
 		-o match:"mount.*tmpfs .*/sysroot" \
 		-o match:"mkdir -p .*/sysroot/usr/lib .*/sysroot/usr/bin .*/sysroot/usr/sbin" \
 		-o match:"ln -s usr/bin usr/sbin usr/lib .*/sysroot" \
+		-o match:"switch_root OK" \
+		initramfs-init
+}
+
+initramfs_init_tmpfs_root_usbdelay_body() {
+	fake_cmdline "usbdelay=5"
+	fake_switch_root
+	fake_sysroot_init
+	atf_check \
+		-o match:"nlplug-findfs .* -t 5000 .* -a .*/tmp/apkovls" \
 		-o match:"switch_root OK" \
 		initramfs-init
 }
