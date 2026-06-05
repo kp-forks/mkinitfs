@@ -71,6 +71,11 @@ MAN_FILES       := mkinitfs.1 mkinitfs-bootparam.7 nlplug-findfs.1
 
 SCRIPTS		:= mkinitfs bootchartd initramfs-init
 IN_FILES	:= $(addsuffix .in,$(SCRIPTS) $(MAN_FILES))
+SHELLCHECK	?= shellcheck
+SHELLCHECK_OPTS	?= -e SC3043
+SHELLCHECK_FILES := mkinitfs.in initramfs-init.in bootchartd.in \
+	nlplug-findfs/init.sh nlplug-findfs/test.sh
+SHELLCHECK_TESTS := tests/*.test tests/test_env.sh
 
 GIT_REV := $(shell test -d .git && git describe || echo exported)
 ifneq ($(GIT_REV), exported)
@@ -152,6 +157,10 @@ check: tests/Kyuafile Kyuafile mkinitfs initramfs-init
 	kyua --variable parallelism=$(shell nproc) test \
 		|| { kyua report --verbose && exit 1; }
 
+shellcheck:
+	$(SHELLCHECK) $(SHELLCHECK_OPTS) $(SHELLCHECK_FILES)
+	$(SHELLCHECK) $(SHELLCHECK_OPTS) -s sh $(SHELLCHECK_TESTS)
+
 .SUFFIXES:	.in
 .in:
 	${SED} ${SED_REPLACE} ${SED_EXTRA} $< > $@.tmp
@@ -176,4 +185,4 @@ install: $(SBIN_FILES) $(SHARE_FILES) $(CONF_FILES)
 mkinitfs.conf:
 	echo 'features="$(DEFAULT_FEATURES)"' > $@
 
-.PHONY: all check clean help install
+.PHONY: all check clean help install shellcheck
