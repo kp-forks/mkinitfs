@@ -8,6 +8,16 @@ test-default:
     - docker-alpine
     - x86_64
 
+test-shellcheck:
+  image: alpine:latest
+  stage: test
+  script:
+    - apk add make kyua kmod-dev util-linux-dev cryptsetup-dev linux-headers lddtree shellcheck
+    - make shellcheck
+  tags:
+    - docker-alpine
+    - x86_64
+
 test-dash:
   extends: test-default
   before_script:
