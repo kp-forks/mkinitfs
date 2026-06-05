@@ -17,7 +17,6 @@ VERSION=@VERSION@
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
 
 # Configuration for bootchartd, the bootchart logger script.
-TMPFS_SIZE=32m
 SAMPLE_PERIOD=0.2
 PROCESS_ACCOUNTING="yes"
 BOOTLOG_DEST=/var/log/bootchart.tgz
@@ -25,14 +24,20 @@ LOGDIR=/bootchart
 EXIT_PROC="mingetty agetty rungetty getty fgetty"
 
 # Monitoring commands
+# shellcheck disable=SC2034
 log_cmd_1="cat /proc/stat"
+# shellcheck disable=SC2034
 log_target_1=proc_stat.log
 
 # /proc/diskstats is available in 2.6 kernels
+# shellcheck disable=SC2034
 log_cmd_2="cat /proc/diskstats"
+# shellcheck disable=SC2034
 log_target_2=proc_diskstats.log
 
+# shellcheck disable=SC2034
 log_cmd_3="cat /proc/[1-9]*/stat 2>/dev/null"
+# shellcheck disable=SC2034
 log_target_3=proc_ps.log
 
 # Uncomment this line for diskless stations
@@ -40,6 +45,13 @@ log_target_3=proc_ps.log
 #log_target_4=proc_netdev.log
 
 max_log=3
+
+exit_proc_running()
+{
+	# EXIT_PROC is a whitespace-separated list of process names for pidof.
+	# shellcheck disable=SC2086
+	pidof $EXIT_PROC >/dev/null
+}
 
 do_logging()
 {
@@ -58,32 +70,33 @@ do_logging()
 			break
 		fi
 
-		fd=$((2 + $i))
-		eval exec $fd'>>$target'
-		eval log_fd_$i=$fd
-		i=$(($i + 1))
+		fd=$((2 + i))
+		eval "exec $fd"'>> "$target"'
+		eval "log_fd_$i=\$fd"
+		i=$((i + 1))
 	done
 
 	not_stop_logging=true
-	while $not_stop_logging && \
-	{ ! pidof $EXIT_PROC >/dev/null; }; do
+	while $not_stop_logging && ! exit_proc_running; do
 		if [ -r /proc/uptime ]; then
 			# Write the time (in jiffies).
-			read uptime < /proc/uptime
+			read -r uptime < /proc/uptime
 			uptime=${uptime%% [0-9]*}
 			uptime=${uptime%.*}${uptime#*.}
 
 			i=1
 			while [ $i -le $max_log ]; do
-				eval fd=\$log_fd_$i\; cmd=\$log_cmd_$i
+				cmd=
+				eval "fd=\$log_fd_$i"
+				eval "cmd=\$log_cmd_$i"
 
 				{
-					echo $uptime
+					echo "$uptime"
 					# Log the command output
-					eval $cmd
+					eval "$cmd"
 					echo
-				} >&$fd
-				i=$(($i + 1))
+				} >&"$fd"
+				i=$((i + 1))
 			done
 		fi
 
@@ -93,9 +106,9 @@ do_logging()
 	# close file descriptors
 	i=1
 	while [ $i -le $max_log ]; do
-		eval fd=\$log_fd_$i
-		eval exec $fd'>&-'
-		i=$(($i + 1))
+		eval "fd=\$log_fd_$i"
+		eval "exec $fd>&-"
+		i=$((i + 1))
 	done
 
 	[ -e kernel_pacct ] && accton off > /dev/null
@@ -107,7 +120,7 @@ do_logging()
 finalize()
 {
 	# Stop process accounting if configured
-	local pacct=
+	pacct=
 	[ -e kernel_pacct ] && pacct=kernel_pacct
 
 	# Write system information
@@ -133,10 +146,10 @@ finalize()
 		fi
 
 		# Get CPU count
-		local cpucount=$(grep -c '^processor' /proc/cpuinfo)
-		if [ $cpucount -gt 1 -a -n "$(grep 'sibling.*2' /proc/cpuinfo)" ]; then
+		cpucount=$(grep -c '^processor' /proc/cpuinfo)
+		if [ "$cpucount" -gt 1 ] && grep -q 'sibling.*2' /proc/cpuinfo; then
 			# Hyper-Threading enabled
-			cpucount=$(( $cpucount / 2 ))
+			cpucount=$((cpucount / 2))
 		fi
 		if grep -q '^model name' /proc/cpuinfo; then
 			echo "system.cpu = $( grep '^model name' /proc/cpuinfo | sed q )"\
@@ -150,7 +163,11 @@ finalize()
 	) >> header
 
 	# Package log files
-	tar -zcf "$BOOTLOG_DEST" header $pacct *.log
+	if [ "$pacct" ]; then
+		tar -zcf "$BOOTLOG_DEST" header "$pacct" ./*.log
+	else
+		tar -zcf "$BOOTLOG_DEST" header ./*.log
+	fi
 	rm -rf "$LOGDIR"
 }
 
@@ -162,7 +179,7 @@ start-initfs)
 		trap "not_stop_logging=false" USR1
 		trap "cleanup=false; not_stop_logging=false" USR2
 
-		cd "$LOGDIR"
+		cd "$LOGDIR" || exit
 		do_logging
 		if $cleanup; then
 			sleep $SAMPLE_PERIOD
@@ -174,16 +191,16 @@ start-initfs)
 stop-initfs)
 	NEWROOT="$2"
 	[ -x "$NEWROOT"/sbin/bootchartd ] || cp -a /sbin/bootchartd "$NEWROOT"/sbin
-	rm -rf "$NEWROOT/$LOGDIR"
+	rm -rf "${NEWROOT:?}$LOGDIR"
 	PID=$(cat "$LOGDIR"/bootchart.pid)
-	kill -USR2 $PID
-	wait $PID
+	kill -USR2 "$PID"
+	wait "$PID"
 	mv "$LOGDIR" "$NEWROOT"
 	;;
 start-rootfs)
 	(
 		trap "not_stop_logging=false" USR1
-		cd "$LOGDIR"
+		cd "$LOGDIR" || exit
 		do_logging
 		finalize
 	) &
