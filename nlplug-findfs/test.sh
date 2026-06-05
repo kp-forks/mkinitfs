@@ -11,10 +11,13 @@ KEY_FILE=$BUILD_DIR/key
 INITRAMFS=$BUILD_DIR/initramfs
 
 split_chars() {
-	local s=$1
+	local s="$1"
+	local i=1
+	local len=${#s}
 	while [ "$s" ]; do
-		echo ${s:0:1}
-		s=${s:1}
+		printf '%s\n' "$s" | cut -c "$i"
+		i=$((i + 1))
+		[ "$i" -le "$len" ] || break
 	done
 }
 
@@ -32,10 +35,11 @@ run_in_vm() {
 
 	local args=
 	local disk
-	for disk in $(split_chars $2); do
-		args="$args -drive file=$(disk_img $disk),format=raw,if=virtio"
+	for disk in $(split_chars "$2"); do
+		args="$args -drive file=$(disk_img "$disk"),format=raw,if=virtio"
 	done
 
+	# shellcheck disable=SC2086
 	qemu-system-x86_64 -m 256 -nographic \
 		-kernel /boot/vmlinuz-lts -initrd "$INITRAMFS" \
 		-append "console=ttyS0 nlpffs_path=$PWD nlpffs_mode=$1 ${3:+nlpffs_args=$3}" \
@@ -43,17 +47,18 @@ run_in_vm() {
 }
 
 build() {
-	local disks=$(seq -s "" 0 5)
+	local disks
+	disks=$(seq -s "" 0 5)
 	local disk
-	for disk in $(split_chars $disks); do
-		qemu-img create $(disk_img $disk) 128M
+	for disk in $(split_chars "$disks"); do
+		qemu-img create "$(disk_img "$disk")" 128M
 	done
-	run_in_vm build $disks < /dev/null
+	run_in_vm build "$disks" < /dev/null
 }
 
 run_case_in_vm() {
-	local mode=$1
-	local case=$2
+	local mode="$1"
+	local case="$2"
 	shift 2
 
 	local disks=
@@ -62,7 +67,7 @@ run_case_in_vm() {
 	for opt in $(split_chars "$case"); do
 		case "$opt" in
 		[0-9])
-			[ -f $(disk_img $opt) ] || build > /dev/null
+			[ -f "$(disk_img "$opt")" ] || build > /dev/null
 			disks="$disks$opt"
 			;;
 		[a-zA-Z])
@@ -75,7 +80,7 @@ run_case_in_vm() {
 				m:cryptdev \
 				H:vda2; do
 
-				if [ ${arg%:*} = $opt ]; then
+				if [ "${arg%:*}" = "$opt" ]; then
 					opt="$opt ${arg#*:}"
 					break
 				fi
@@ -84,7 +89,7 @@ run_case_in_vm() {
 			;;
 		esac
 	done
-	run_in_vm $mode $disks $(printf %s "$args $*" | base64 -w 0)
+	run_in_vm "$mode" "$disks" "$(printf %s "$args $*" | base64 -w 0)"
 }
 
 
@@ -131,11 +136,12 @@ expected() {
 
 : > actual
 run() {
-	[ $MODE != run ] || expected "$1" > /dev/null
+	[ "$MODE" != run ] || expected "$1" > /dev/null
 
 	(
-		echo -n "$1 "
-		local result=$(run_case_in_vm test "$@" < /dev/null | \
+		printf "%s " "$1"
+		local result
+		result=$(run_case_in_vm test "$@" < /dev/null | \
 			sed "s/^TEST RESULT: //;ta;d;:a" | tr -d '\r\n')
 		[ "$result" ] || result=FAILED
 		echo "$result"
@@ -143,21 +149,22 @@ run() {
 }
 
 if [ "$TEST" ]; then
+	# shellcheck disable=SC2086
 	run "$TEST" $ARGS
 else
 	for disks in 0 05 1 12 2 3 45; do
 		for ab in a b ab; do
 			for n in "" n; do
 				for ckmH in "" ckm ckmH; do
-					run $disks-$ab$n$ckmH
+					run "$disks-$ab$n$ckmH"
 				done
 			done
 		done
 	done
 fi
 
-if [ $MODE = update ]; then
+if [ "$MODE" = update ]; then
 	mv actual expected
-elif [ $MODE = run ]; then
-	expected $TEST | diff /dev/stdin actual
+elif [ "$MODE" = run ]; then
+	expected "$TEST" | diff /dev/stdin actual
 fi

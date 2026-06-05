@@ -21,17 +21,17 @@ APKOVL=foo.apkovl.tar.gz
 BOOT_REPO=bar/.boot_repository
 
 _mkfs() {
-	local dev=/dev/$1
+	local dev="/dev/$1"
 	shift
 
-	mkfs.vfat $dev
+	mkfs.vfat "$dev"
 	mkdir -p /mnt
-	mount -t vfat $dev /mnt
+	mount -t vfat "$dev" /mnt
 
 	local path
 	for path; do
-		mkdir -p /mnt/$(dirname $path)
-		: > /mnt/$path
+		mkdir -p "/mnt/$(dirname "$path")"
+		: > "/mnt/$path"
 	done
 
 	umount /mnt
@@ -39,24 +39,27 @@ _mkfs() {
 
 luks() {
 	local args="-d $TEST_PATH/build/key ${3:+--header /dev/$3} /dev/$2"
+	# shellcheck disable=SC2086
 	cryptsetup luksFormat $args < /dev/null
+	# shellcheck disable=SC2086
 	cryptsetup open --type luks $args $1
 }
 
 luksfs() {
-	local dev=$1
-	local files=$2
+	local dev="$1"
+	local files="$2"
 	shift 2
 
-	luks fs $dev $*
+	luks fs "$dev" "$@"
+	# shellcheck disable=SC2086
 	_mkfs mapper/fs $files
 	cryptsetup close fs
 }
 
 nlpffs() {
-	local path=$1
+	local path="$1"
 	shift
-	$path/nlplug-findfs -p /sbin/mdev "$@"
+	"$path"/nlplug-findfs -p /sbin/mdev "$@"
 }
 
 if [ "$MODE" = build ]; then
@@ -104,6 +107,7 @@ else
 	cd "$TEST_PATH"
 	mkdir output
 	cd output
+	# shellcheck disable=SC2046
 	nlpffs .. $(param args | base64 -d)
 	echo $? > status
 
@@ -112,10 +116,10 @@ else
 		sh
 	elif [ "$MODE" = test ]; then
 		set +x
-		echo -n "TEST RESULT:"
+		printf "TEST RESULT:"
 		for file in *; do
-			echo -n " $file="
-			sed ':a;N;s/\n/:/;ta' $file | tr -d $'\n'
+			printf " %s=" "$file"
+			sed ':a;N;s/\n/:/;ta' "$file" | tr -d '\n'
 		done
 		echo
 	fi
