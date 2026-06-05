@@ -4,6 +4,7 @@
 
 init_tests \
 	initramfs_init_cmdline_root \
+	initramfs_init_cmdline_root_usbdelay \
 	initramfs_init_blacklist \
 	initramfs_init_tmpfs_root \
 	initramfs_init_tmpfs_root_usbdelay \
@@ -102,6 +103,16 @@ initramfs_init_cmdline_root_body() {
 	atf_check -o match:"Alpine Init" \
 		-o match:"nlplug-findfs" \
 		-o match:"mount.*-o ro.*/dev/vda1.*/sysroot" \
+		-o match:"switch_root OK" \
+			initramfs-init
+}
+
+initramfs_init_cmdline_root_usbdelay_body() {
+	fake_cmdline "root=/dev/vda usbdelay=5"
+	fake_switch_root
+
+	atf_check -o match:"nlplug-findfs .* -t 5000 /dev/vda" \
+		-o match:"mount.*-o ro.*/dev/vda.*/sysroot" \
 		-o match:"switch_root OK" \
 		initramfs-init
 }
